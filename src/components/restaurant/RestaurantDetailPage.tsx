@@ -15,6 +15,8 @@ import { Badge } from "../ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { getDisplayAmount } from "../../utils/currencyConverter";
 import { Restaurant, MenuItem } from "../../types/types";
+import { useCart } from "../../contexts/CartContext";
+import { useToast } from "../ui/use-toast";
 
 // Sample restaurant data
 const sampleRestaurant: Restaurant = {
@@ -140,14 +142,15 @@ interface RestaurantDetailPageProps {
 }
 
 const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({
-  onAddToCart = (item) => console.log(`Added ${item.name} to cart`),
   currency = "USD",
 }) => {
   const { id } = useParams<{ id: string }>();
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("menu");
-  const [cartCount, setCartCount] = useState(0);
+  const { addToCart, getCartCount } = useCart();
+  const { toast } = useToast();
+  const cartCount = getCartCount();
 
   useEffect(() => {
     // In a real app, this would fetch the restaurant data from an API
@@ -159,8 +162,12 @@ const RestaurantDetailPage: React.FC<RestaurantDetailPageProps> = ({
   }, [id]);
 
   const handleAddToCart = (item: MenuItem) => {
-    onAddToCart(item, 1);
-    setCartCount((prev) => prev + 1);
+    addToCart(item, 1);
+    toast({
+      title: "Added to cart",
+      description: `${item.name} has been added to your cart`,
+      duration: 2000,
+    });
   };
 
   if (loading) {

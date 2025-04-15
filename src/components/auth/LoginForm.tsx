@@ -1,5 +1,5 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -12,12 +12,29 @@ import {
   CardTitle,
 } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 
 const LoginForm = () => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [role, setRole] = useState("customer");
+  const navigate = useNavigate();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // In a real app, this would authenticate with a backend
-    console.log("Login submitted");
+    console.log("Login submitted", { email, password, role });
+
+    // Store user role in localStorage for persistence
+    localStorage.setItem("userRole", role);
+    localStorage.setItem("isLoggedIn", "true");
+
+    // Redirect based on role
+    if (role === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/");
+    }
   };
 
   return (
@@ -37,6 +54,8 @@ const LoginForm = () => {
               type="email"
               placeholder="name@example.com"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
           <div className="space-y-2">
@@ -49,8 +68,38 @@ const LoginForm = () => {
                 Forgot password?
               </Link>
             </div>
-            <Input id="password" type="password" required />
+            <Input
+              id="password"
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
+
+          <div className="space-y-2">
+            <Label>Account Type</Label>
+            <RadioGroup
+              defaultValue="customer"
+              value={role}
+              onValueChange={setRole}
+              className="flex flex-col space-y-1"
+            >
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="customer" id="customer" />
+                <Label htmlFor="customer" className="font-normal">
+                  Customer
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <RadioGroupItem value="admin" id="admin" />
+                <Label htmlFor="admin" className="font-normal">
+                  Administrator
+                </Label>
+              </div>
+            </RadioGroup>
+          </div>
+
           <div className="flex items-center space-x-2">
             <Checkbox id="remember" />
             <Label htmlFor="remember" className="text-sm font-normal">

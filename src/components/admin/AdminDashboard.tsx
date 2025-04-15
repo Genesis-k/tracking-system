@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import UserManagement from "./UserManagement";
 import RestaurantManagement from "./RestaurantManagement";
+import CategoryManagement from "./CategoryManagement";
 import {
   Card,
   CardContent,
@@ -9,7 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "../ui/card";
-import { LayoutDashboard, Users, UtensilsCrossed } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  UtensilsCrossed,
+  ListFilter,
+} from "lucide-react";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -25,7 +31,7 @@ const AdminDashboard = () => {
         onValueChange={setActiveTab}
         className="w-full"
       >
-        <TabsList className="grid w-full grid-cols-3 mb-8">
+        <TabsList className="grid w-full grid-cols-4 mb-8">
           <TabsTrigger value="overview" className="flex items-center gap-2">
             <LayoutDashboard className="h-4 w-4" />
             <span>Overview</span>
@@ -37,6 +43,10 @@ const AdminDashboard = () => {
           <TabsTrigger value="restaurants" className="flex items-center gap-2">
             <UtensilsCrossed className="h-4 w-4" />
             <span>Restaurants</span>
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="flex items-center gap-2">
+            <ListFilter className="h-4 w-4" />
+            <span>Categories</span>
           </TabsTrigger>
         </TabsList>
 
@@ -62,6 +72,15 @@ const AdminDashboard = () => {
             </Card>
             <Card>
               <CardHeader className="pb-2">
+                <CardTitle>Total Categories</CardTitle>
+                <CardDescription>Available categories</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold">8</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
                 <CardTitle>Total Orders</CardTitle>
                 <CardDescription>Last 30 days</CardDescription>
               </CardHeader>
@@ -78,6 +97,10 @@ const AdminDashboard = () => {
 
         <TabsContent value="restaurants">
           <RestaurantManagement />
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <CategoryManagement />
         </TabsContent>
       </Tabs>
     </div>

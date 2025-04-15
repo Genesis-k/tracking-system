@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import {
@@ -19,57 +19,73 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
-import { Search, Plus, Pencil, Trash2 } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { supabase } from "../../lib/supabase";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { useToast } from "../ui/use-toast";
 
-// Sample user data
-const initialUsers = [
-  {
-    id: "1",
-    name: "John Doe",
-    email: "john.doe@example.com",
-    role: "Customer",
-    status: "Active",
-    joinDate: "2023-05-15",
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane.smith@example.com",
-    role: "Customer",
-    status: "Active",
-    joinDate: "2023-06-22",
-  },
-  {
-    id: "3",
-    name: "Michael Johnson",
-    email: "michael.j@example.com",
-    role: "Admin",
-    status: "Active",
-    joinDate: "2023-04-10",
-  },
-  {
-    id: "4",
-    name: "Sarah Williams",
-    email: "sarah.w@example.com",
-    role: "Customer",
-    status: "Inactive",
-    joinDate: "2023-07-05",
-  },
-];
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  join_date: string;
+}
 
 const UserManagement = () => {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState({
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User>({
     id: "",
     name: "",
     email: "",
-    role: "Customer",
-    status: "Active",
-    joinDate: "",
+    role: "customer",
+    status: "active",
+    join_date: "",
   });
+  const { toast } = useToast();
+
+  // Fetch users from Supabase
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("name");
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setUsers(data);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error fetching users",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load users on component mount
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   // Filter users based on search term
   const filteredUsers = users.filter(
@@ -89,42 +105,134 @@ const UserManagement = () => {
     setCurrentUser({ ...currentUser, [name]: value });
   };
 
+  // Handle select input change
+  const handleSelectChange = (name: string, value: string) => {
+    setCurrentUser({ ...currentUser, [name]: value });
+  };
+
   // Add new user
-  const handleAddUser = () => {
-    const newUser = {
-      ...currentUser,
-      id: (users.length + 1).toString(),
-      joinDate: new Date().toISOString().split("T")[0],
-    };
-    setUsers([...users, newUser]);
-    setCurrentUser({
-      id: "",
-      name: "",
-      email: "",
-      role: "Customer",
-      status: "Active",
-      joinDate: "",
-    });
-    setIsAddDialogOpen(false);
+  const handleAddUser = async () => {
+    setIsLoading(true);
+    try {
+      // In a real app, you would use Supabase Auth to create the user
+      // For this demo, we'll just add to the users table
+      const { data, error } = await supabase
+        .from("users")
+        .insert([
+          {
+            name: currentUser.name,
+            email: currentUser.email,
+            role: currentUser.role,
+            status: currentUser.status,
+            // Generate a random UUID for demo purposes
+            id: crypto.randomUUID(),
+          },
+        ])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setUsers([...users, data[0]]);
+        toast({
+          title: "User added",
+          description: `${currentUser.name} has been added successfully.`,
+        });
+      }
+
+      setCurrentUser({
+        id: "",
+        name: "",
+        email: "",
+        role: "customer",
+        status: "active",
+        join_date: "",
+      });
+      setIsAddDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error adding user",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Edit user
-  const handleEditUser = () => {
-    setUsers(
-      users.map((user) => (user.id === currentUser.id ? currentUser : user)),
-    );
-    setIsEditDialogOpen(false);
+  const handleEditUser = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .update({
+          name: currentUser.name,
+          email: currentUser.email,
+          role: currentUser.role,
+          status: currentUser.status,
+        })
+        .eq("id", currentUser.id)
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setUsers(
+          users.map((user) => (user.id === currentUser.id ? data[0] : user)),
+        );
+        toast({
+          title: "User updated",
+          description: `${currentUser.name}'s information has been updated.`,
+        });
+      }
+
+      setIsEditDialogOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error updating user",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Delete user
-  const handleDeleteUser = (id: string) => {
+  const handleDeleteUser = async (id: string) => {
     if (window.confirm("Are you sure you want to delete this user?")) {
-      setUsers(users.filter((user) => user.id !== id));
+      setIsLoading(true);
+      try {
+        const { error } = await supabase.from("users").delete().eq("id", id);
+
+        if (error) {
+          throw error;
+        }
+
+        setUsers(users.filter((user) => user.id !== id));
+        toast({
+          title: "User deleted",
+          description: "The user has been removed successfully.",
+        });
+      } catch (error: any) {
+        toast({
+          title: "Error deleting user",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
   // Open edit dialog and set current user
-  const openEditDialog = (user: typeof currentUser) => {
+  const openEditDialog = (user: User) => {
     setCurrentUser(user);
     setIsEditDialogOpen(true);
   };
@@ -188,35 +296,57 @@ const UserManagement = () => {
                   <Label htmlFor="role" className="text-right">
                     Role
                   </Label>
-                  <Input
-                    id="role"
-                    name="role"
+                  <Select
                     value={currentUser.role}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                  />
+                    onValueChange={(value) => handleSelectChange("role", value)}
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="customer">Customer</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                   <Label htmlFor="status" className="text-right">
                     Status
                   </Label>
-                  <Input
-                    id="status"
-                    name="status"
+                  <Select
                     value={currentUser.status}
-                    onChange={handleInputChange}
-                    className="col-span-3"
-                  />
+                    onValueChange={(value) =>
+                      handleSelectChange("status", value)
+                    }
+                  >
+                    <SelectTrigger className="col-span-3">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <DialogFooter>
                 <Button
                   variant="outline"
                   onClick={() => setIsAddDialogOpen(false)}
+                  disabled={isLoading}
                 >
                   Cancel
                 </Button>
-                <Button onClick={handleAddUser}>Add User</Button>
+                <Button onClick={handleAddUser} disabled={isLoading}>
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    "Add User"
+                  )}
+                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -236,26 +366,38 @@ const UserManagement = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.length > 0 ? (
+            {isLoading && users.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-10">
+                  <div className="flex justify-center">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                  <p className="mt-2 text-sm text-gray-500">Loading users...</p>
+                </TableCell>
+              </TableRow>
+            ) : filteredUsers.length > 0 ? (
               filteredUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.role}</TableCell>
+                  <TableCell className="capitalize">{user.role}</TableCell>
                   <TableCell>
                     <span
-                      className={`px-2 py-1 rounded-full text-xs ${user.status === "Active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                      className={`px-2 py-1 rounded-full text-xs ${user.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
                     >
                       {user.status}
                     </span>
                   </TableCell>
-                  <TableCell>{user.joinDate}</TableCell>
+                  <TableCell>
+                    {new Date(user.join_date).toLocaleDateString()}
+                  </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => openEditDialog(user)}
+                        disabled={isLoading}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -264,6 +406,7 @@ const UserManagement = () => {
                         size="icon"
                         className="text-red-500 hover:text-red-700 hover:bg-red-50"
                         onClick={() => handleDeleteUser(user.id)}
+                        disabled={isLoading}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -274,7 +417,9 @@ const UserManagement = () => {
             ) : (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-4">
-                  No users found matching your search.
+                  {searchTerm
+                    ? "No users found matching your search."
+                    : "No users found. Add some users to get started."}
                 </TableCell>
               </TableRow>
             )}
@@ -321,35 +466,55 @@ const UserManagement = () => {
               <Label htmlFor="edit-role" className="text-right">
                 Role
               </Label>
-              <Input
-                id="edit-role"
-                name="role"
+              <Select
                 value={currentUser.role}
-                onChange={handleInputChange}
-                className="col-span-3"
-              />
+                onValueChange={(value) => handleSelectChange("role", value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">Customer</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-status" className="text-right">
                 Status
               </Label>
-              <Input
-                id="edit-status"
-                name="status"
+              <Select
                 value={currentUser.status}
-                onChange={handleInputChange}
-                className="col-span-3"
-              />
+                onValueChange={(value) => handleSelectChange("status", value)}
+              >
+                <SelectTrigger className="col-span-3">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
+              disabled={isLoading}
             >
               Cancel
             </Button>
-            <Button onClick={handleEditUser}>Save Changes</Button>
+            <Button onClick={handleEditUser} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
